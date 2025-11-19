@@ -4,15 +4,48 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>threejs</title>
+    <title>threejs room</title>
     <style>
+      html,
       body {
+        height: 100%;
         margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+      }
+
+      .face {
+        color: white;
+        font-family: system-ui, sans-serif;
+        font-size: 16px;
+        text-align: center;
+        /* no positioning here – CSS2DRenderer handles that */
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <!-- these will be “stuck” to the 3D walls -->
+    <!-- <div id="back-wall" class="face">
+      <h1>Hero / Back Wallnhgjtfu</h1>
+    </div> -->
+
+    <div id="right-wall" class="face">
+      <h1>Right Wall Section</h1>
+    </div>
+
+    <!-- <div id="left-wall" class="face">
+      <h1>Left Wall Section</h1>
+    </div> -->
+
+    <!-- <div id="ceiling-wall" class="face">
+      <h1>Ceiling Section</h1>
+    </div> -->
+
+    <div id="floor-wall" class="face">
+      <h1>Floor Section</h1>
+    </div>
+
+    <script type="module" src="/src/scene.js"></script>
   </body>
 </html>
