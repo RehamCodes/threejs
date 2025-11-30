@@ -13,6 +13,7 @@ import {
 import {
   initFloorModelMotion,
   updateFloorModelMotion,
+  setFloorFollowTarget,
 } from "./moveFloorModels.js";
 import {
   initMorphModelsToPoints,
@@ -111,7 +112,7 @@ const modelConfigs = [
     x: 4,
     z: -WALL_DISTANCE * 0.77,
     scale: 0.4,
-    canMove: false,
+    canMove: true,
     canMorph: true,
     pointSize: 0.015, // a bit bigger, big creature
   },
@@ -129,6 +130,16 @@ const { floor, grid, floorY } = createTiledFloor({
 
 scene.add(floor);
 scene.add(grid);
+// 🔹 This is the true rectangle of the floor in world space
+const floorBounds = {
+  minX: -wallWidth / 2,
+  maxX: wallWidth / 2,
+  minZ: -WALL_DISTANCE,
+  maxZ: 0,
+};
+
+// how far away from walls the walking model should stay
+const floorMargin = 3.3; // tweak: 1, 1.5, 2...
 
 Promise.all(
   modelConfigs.map((cfg) =>
@@ -172,13 +183,11 @@ Promise.all(
       baseRadius: 3,
       baseSpeed: 0.25,
       bounds: {
-        minX: -wallWidth / 2,
-        maxX: wallWidth / 2,
-        minZ: -WALL_DISTANCE,
-        maxZ: 0,
-        margin: 1,
+        ...floorBounds,
+        margin: floorMargin,
       },
       avoidRadius: 1.5,
+      followSpeed: 2.5,
     });
   }
 
@@ -317,23 +326,52 @@ renderer.domElement.addEventListener("pointerdown", (e) => {
   }
 });
 
+// renderer.domElement.addEventListener("pointermove", (e) => {
+//   if (!isDragging || !activeModel) return;
+
+//   const deltaX = e.clientX - prevX;
+//   prevX = e.clientX;
+
+//   const rotationSpeed = 0.01;
+//   activeModel.rotation.y += deltaX * rotationSpeed;
+// });
+
+// window.addEventListener("pointerup", () => {
+//   isDragging = false;
+//   activeModel = null;
+// });
+
+// renderer.domElement.addEventListener("pointermove", (e) => {
+//   // 1) MODEL ROTATION (only when dragging a picked model)
+//   if (isDragging && activeModel) {
+//     const deltaX = e.clientX - prevX;
+//     prevX = e.clientX;
+
+//     const rotationSpeed = 0.01;
+//     activeModel.rotation.y += deltaX * rotationSpeed;
+//   }
+
+//   // 2) RIPPLE ON WALLS (always check hover, even if not dragging)
+//   const rect = renderer.domElement.getBoundingClientRect();
+//   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+//   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+//   raycaster.setFromCamera(mouse, camera);
+//   const wallHits = raycaster.intersectObjects(getRippleMeshes(), false);
+
+//   if (wallHits.length > 0) {
+//     const hit = wallHits[0];
+//     const entry = rippleTargets.find((r) => r.mesh === hit.object);
+//     if (entry && hit.uv) {
+//       entry.material.uniforms.uRippleCenter.value.copy(hit.uv);
+//       entry.material.uniforms.uRippleTime.value = 0.0;
+//       entry.material.uniforms.uRippleActive.value = 1.0;
+//     }
+//   }
+// });
+
 renderer.domElement.addEventListener("pointermove", (e) => {
-  if (!isDragging || !activeModel) return;
-
-  const deltaX = e.clientX - prevX;
-  prevX = e.clientX;
-
-  const rotationSpeed = 0.01;
-  activeModel.rotation.y += deltaX * rotationSpeed;
-});
-
-window.addEventListener("pointerup", () => {
-  isDragging = false;
-  activeModel = null;
-});
-
-renderer.domElement.addEventListener("pointermove", (e) => {
-  // 1) MODEL ROTATION (only when dragging a picked model)
+  // 1) MODEL ROTATION (if dragging)
   if (isDragging && activeModel) {
     const deltaX = e.clientX - prevX;
     prevX = e.clientX;
@@ -342,14 +380,14 @@ renderer.domElement.addEventListener("pointermove", (e) => {
     activeModel.rotation.y += deltaX * rotationSpeed;
   }
 
-  // 2) RIPPLE ON WALLS (always check hover, even if not dragging)
+  // 2) COMMON RAYCAST SETUP
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
   raycaster.setFromCamera(mouse, camera);
-  const wallHits = raycaster.intersectObjects(getRippleMeshes(), false);
 
+  // 3) RIPPLE ON WALLS
+  const wallHits = raycaster.intersectObjects(getRippleMeshes(), false);
   if (wallHits.length > 0) {
     const hit = wallHits[0];
     const entry = rippleTargets.find((r) => r.mesh === hit.object);
@@ -359,91 +397,111 @@ renderer.domElement.addEventListener("pointermove", (e) => {
       entry.material.uniforms.uRippleActive.value = 1.0;
     }
   }
+
+  // 4) FLOOR FOLLOW TARGET (clamped so model never hits walls)
+  const floorHits = raycaster.intersectObject(floor, false);
+  if (floorHits.length > 0) {
+    const p = floorHits[0].point.clone();
+
+    p.x = THREE.MathUtils.clamp(
+      p.x,
+      floorBounds.minX + floorMargin,
+      floorBounds.maxX - floorMargin
+    );
+
+    p.z = THREE.MathUtils.clamp(
+      p.z,
+      floorBounds.minZ + floorMargin,
+      floorBounds.maxZ - floorMargin
+    );
+
+    setFloorFollowTarget(p);
+  }
 });
 
 // ===== CONTROLS (we'll drive camera, so disable user input) =====
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableZoom = false;
-controls.enableRotate = false;
-controls.enablePan = false;
+// const controls = new OrbitControls(camera, renderer.domElement);
+// controls.enableZoom = false;
+// controls.enableRotate = false;
+// controls.enablePan = false;
 
-// ===== SCROLL-DRIVEN CAMERA STATES =====
+// // ===== SCROLL-DRIVEN CAMERA STATES =====
 
-// how far from each wall when "full-screen"
-const viewDist = WALL_DISTANCE / 2;
+// // how far from each wall when "full-screen"
+// const viewDist = WALL_DISTANCE / 2;
 
-// predefine centers for each face
-const backCenter = new THREE.Vector3(0, eyeY, -WALL_DISTANCE);
-const rightCenter = new THREE.Vector3(wallWidth / 2, eyeY, -WALL_DISTANCE / 2);
-const leftCenter = new THREE.Vector3(-wallWidth / 2, eyeY, -WALL_DISTANCE / 2);
-const floorCenter = new THREE.Vector3(0, floorY, -WALL_DISTANCE / 2);
-// const ceilingCenter = new THREE.Vector3(0, ceilingY, -WALL_DISTANCE / 2);
+// // predefine centers for each face
+// const backCenter = new THREE.Vector3(0, eyeY, -WALL_DISTANCE);
+// const rightCenter = new THREE.Vector3(wallWidth / 2, eyeY, -WALL_DISTANCE / 2);
+// const leftCenter = new THREE.Vector3(-wallWidth / 2, eyeY, -WALL_DISTANCE / 2);
+// const floorCenter = new THREE.Vector3(0, floorY, -WALL_DISTANCE / 2);
+// // const ceilingCenter = new THREE.Vector3(0, ceilingY, -WALL_DISTANCE / 2);
 
-// camera states: pos + target
-const states = [
-  // 0: door view → whole room
-  {
-    pos: new THREE.Vector3(0, eyeY, 0),
-    target: backCenter.clone(),
-  },
-  // 1: zoomed into back wall
-  {
-    pos: new THREE.Vector3(0, eyeY, backCenter.z + viewDist),
-    target: backCenter.clone(),
-  },
-  // 2: right wall full screen
-  {
-    pos: new THREE.Vector3(rightCenter.x - viewDist, eyeY, rightCenter.z),
-    target: rightCenter.clone(),
-  },
-  // 3: left wall full screen
-  {
-    pos: new THREE.Vector3(leftCenter.x + viewDist, eyeY, leftCenter.z),
-    target: leftCenter.clone(),
-  },
-  // 4: floor full screen
-  {
-    pos: new THREE.Vector3(0, floorCenter.y + viewDist, floorCenter.z),
-    target: floorCenter.clone(),
-  },
-  // 5: ceiling full screen
-  // {
-  //   pos: new THREE.Vector3(0, ceilingCenter.y - viewDist, ceilingCenter.z),
-  //   target: ceilingCenter.clone(),
-  // },
-];
+// // camera states: pos + target
+// const states = [
+//   // 0: door view → whole room
+//   {
+//     pos: new THREE.Vector3(0, eyeY, 0),
+//     target: backCenter.clone(),
+//   },
+//   // 1: zoomed into back wall
+//   {
+//     pos: new THREE.Vector3(0, eyeY, backCenter.z + viewDist),
+//     target: backCenter.clone(),
+//   },
+//   // 2: right wall full screen
+//   {
+//     pos: new THREE.Vector3(rightCenter.x - viewDist, eyeY, rightCenter.z),
+//     target: rightCenter.clone(),
+//   },
+//   // 3: left wall full screen
+//   {
+//     pos: new THREE.Vector3(leftCenter.x + viewDist, eyeY, leftCenter.z),
+//     target: leftCenter.clone(),
+//   },
+//   // 4: floor full screen
+//   {
+//     pos: new THREE.Vector3(0, floorCenter.y + viewDist, floorCenter.z),
+//     target: floorCenter.clone(),
+//   },
+//   // 5: ceiling full screen
+//   // {
+//   //   pos: new THREE.Vector3(0, ceilingCenter.y - viewDist, ceilingCenter.z),
+//   //   target: ceilingCenter.clone(),
+//   // },
+// ];
 
-const maxStateIndex = states.length - 1;
-let scrollProgress = 0; // 0 → 5
+// const maxStateIndex = states.length - 1;
+// let scrollProgress = 0; // 0 → 5
 
-// set initial camera state
-camera.position.copy(states[0].pos);
-controls.target.copy(states[0].target);
-controls.update();
+// // set initial camera state
+// camera.position.copy(states[0].pos);
+// controls.target.copy(states[0].target);
+// controls.update();
 
-// wheel -> virtual scroll
-window.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    // tune 0.002 for how fast the scroll moves through sections
-    scrollProgress += e.deltaY * 0.002;
-    scrollProgress = THREE.MathUtils.clamp(scrollProgress, 0, maxStateIndex);
-  },
-  { passive: false }
-);
+// // wheel -> virtual scroll
+// window.addEventListener(
+//   "wheel",
+//   (e) => {
+//     e.preventDefault();
+//     // tune 0.002 for how fast the scroll moves through sections
+//     scrollProgress += e.deltaY * 0.002;
+//     scrollProgress = THREE.MathUtils.clamp(scrollProgress, 0, maxStateIndex);
+//   },
+//   { passive: false }
+// );
 
-// ===== RESIZE =====
-window.addEventListener("resize", () => {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+// // ===== RESIZE =====
+// window.addEventListener("resize", () => {
+//   const w = window.innerWidth;
+//   const h = window.innerHeight;
 
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+//   camera.aspect = w / h;
+//   camera.updateProjectionMatrix();
 
-  renderer.setSize(w, h);
-  labelRenderer.setSize(w, h);
-});
+//   renderer.setSize(w, h);
+//   labelRenderer.setSize(w, h);
+// });
 
 const clock = new THREE.Clock();
 
@@ -453,15 +511,15 @@ function animate() {
   const delta = clock.getDelta();
 
   // scroll-driven camera
-  const s = THREE.MathUtils.clamp(scrollProgress, 0, maxStateIndex);
-  const i = Math.floor(s);
-  const t = s - i;
-  const a = states[i];
-  const b = states[Math.min(i + 1, maxStateIndex)];
+  // const s = THREE.MathUtils.clamp(scrollProgress, 0, maxStateIndex);
+  // const i = Math.floor(s);
+  // const t = s - i;
+  // const a = states[i];
+  // const b = states[Math.min(i + 1, maxStateIndex)];
 
-  camera.position.lerpVectors(a.pos, b.pos, t);
-  controls.target.lerpVectors(a.target, b.target, t);
-  controls.update();
+  // camera.position.lerpVectors(a.pos, b.pos, t);
+  // controls.target.lerpVectors(a.target, b.target, t);
+  // controls.update();
 
   // 🦶 move them around the floor
   updateFloorModelMotion(delta);

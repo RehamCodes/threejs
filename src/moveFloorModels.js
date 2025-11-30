@@ -1,54 +1,76 @@
 // src/moveFloorModels.js
+import * as THREE from "three";
+
 const walkers = [];
 
 // extra settings we keep between frames
 const settings = {
   bounds: null, // { minX, maxX, minZ, maxZ, margin }
   avoidRadius: 1.5, // how far apart models try to stay
+  followSpeed: 2.0, // units per second
+  followTarget: null, // THREE.Vector3 | null
 };
 
 export function initFloorModelMotion(
   models,
-  {
-    baseRadius = 3,
-    baseSpeed = 0.4,
-    bounds = null, // 👈 optional room bounds
-    avoidRadius = 1.5, // 👈 optional personal space
-  } = {}
+  { bounds = null, avoidRadius = 1.5, followSpeed = 2.0 } = {}
 ) {
   walkers.length = 0;
 
   settings.bounds = bounds;
   settings.avoidRadius = avoidRadius;
+  settings.followSpeed = followSpeed;
 
-  models.forEach((mesh, index) => {
+  models.forEach((mesh) => {
     const startPos = mesh.position.clone();
 
     walkers.push({
       mesh,
-      centerX: startPos.x,
-      centerZ: startPos.z,
       baseY: startPos.y,
-      angle: Math.random() * Math.PI * 2,
-      radius: baseRadius * (0.7 + Math.random() * 0.8) + index * 0.2,
-      speed:
-        baseSpeed *
-        (0.7 + Math.random() * 0.8) *
-        (Math.random() < 0.5 ? 1 : -1),
     });
   });
 }
 
+// 👇 call this from scene.js when you get a mouse hit on the floor
+export function setFloorFollowTarget(targetVec3) {
+  if (!targetVec3) {
+    settings.followTarget = null;
+  } else {
+    if (!settings.followTarget) {
+      settings.followTarget = new THREE.Vector3();
+    }
+    settings.followTarget.copy(targetVec3);
+  }
+}
+
 export function updateFloorModelMotion(delta) {
-  const { bounds, avoidRadius } = settings;
+  const { bounds, avoidRadius, followSpeed, followTarget } = settings;
+  if (!followTarget) return; // nothing to chase yet
 
   walkers.forEach((w, idx) => {
-    // orbit angle
-    w.angle += w.speed * delta;
+    const pos = w.mesh.position;
 
-    // desired new pos
-    let nx = w.centerX + Math.cos(w.angle) * w.radius;
-    let nz = w.centerZ + Math.sin(w.angle) * w.radius;
+    // vector from model → target
+    let dx = followTarget.x - pos.x;
+    let dz = followTarget.z - pos.z;
+    const distSq = dx * dx + dz * dz;
+
+    if (distSq < 1e-6) {
+      // already basically at target
+      return;
+    }
+
+    const dist = Math.sqrt(distSq);
+
+    // max movement this frame
+    const maxStep = followSpeed * delta;
+    const step = Math.min(maxStep, dist);
+
+    dx = (dx / dist) * step;
+    dz = (dz / dist) * step;
+
+    let nx = pos.x + dx;
+    let nz = pos.z + dz;
 
     // 1) keep inside room bounds
     if (bounds) {
@@ -58,7 +80,7 @@ export function updateFloorModelMotion(delta) {
       nz = Math.min(Math.max(nz, minZ + margin), maxZ - margin);
     }
 
-    // 2) avoid other models (simple radial push)
+    // 2) avoid other moving models
     if (avoidRadius > 0) {
       walkers.forEach((other, jdx) => {
         if (idx === jdx) return;
@@ -66,20 +88,19 @@ export function updateFloorModelMotion(delta) {
         const ox = other.mesh.position.x;
         const oz = other.mesh.position.z;
 
-        const dx = nx - ox;
-        const dz = nz - oz;
-        const distSq = dx * dx + dz * dz;
+        const ddx = nx - ox;
+        const ddz = nz - oz;
+        const d2 = ddx * ddx + ddz * ddz;
 
         const minDist = avoidRadius;
         const minDistSq = minDist * minDist;
 
-        if (distSq > 0 && distSq < minDistSq) {
-          const dist = Math.sqrt(distSq);
-          const push = (minDist - dist) / dist; // 0..something
+        if (d2 > 0 && d2 < minDistSq) {
+          const d = Math.sqrt(d2);
+          const push = (minDist - d) / d; // 0..something
 
-          // push away from the other model
-          nx += dx * push;
-          nz += dz * push;
+          nx += ddx * push;
+          nz += ddz * push;
         }
       });
     }
@@ -88,5 +109,10 @@ export function updateFloorModelMotion(delta) {
     w.mesh.position.x = nx;
     w.mesh.position.z = nz;
     w.mesh.position.y = w.baseY; // stay glued to floor
+
+    // rotate to face movement direction
+    if (step > 0.0001) {
+      w.mesh.rotation.y = Math.atan2(dx, dz);
+    }
   });
 }
