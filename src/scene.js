@@ -1,6 +1,5 @@
 // src/scene.js
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
   CSS2DRenderer,
   CSS2DObject,
@@ -336,10 +335,10 @@ renderer.domElement.addEventListener("pointerdown", (e) => {
 //   activeModel.rotation.y += deltaX * rotationSpeed;
 // });
 
-// window.addEventListener("pointerup", () => {
-//   isDragging = false;
-//   activeModel = null;
-// });
+window.addEventListener("pointerup", () => {
+  isDragging = false;
+  activeModel = null;
+});
 
 // renderer.domElement.addEventListener("pointermove", (e) => {
 //   // 1) MODEL ROTATION (only when dragging a picked model)
