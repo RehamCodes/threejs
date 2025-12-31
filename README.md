@@ -2,9 +2,6 @@
 
 A sophisticated 3D spaceship environment built with Three.js, featuring interactive 3D models and shader effects.
 
-## 🎥 Demo
-
-Screencast from 2025-12-31 13-09-39.webm
 
 ## 🚀 Getting Started
 
