@@ -145,6 +145,9 @@ Promise.all(
     createDragonOnFloor({
       floorY,
       ...cfg,
+    }).catch((err) => {
+      console.error("Failed to load model:", cfg.url, err);
+      return null; // return null for failed models
     })
   )
 ).then((loaded) => {
@@ -153,6 +156,11 @@ Promise.all(
   const morphPointSizes = [];
 
   loaded.forEach((mesh, index) => {
+    if (!mesh) {
+      console.warn("Skipping failed model at index", index);
+      return; // skip null models
+    }
+    
     scene.add(mesh);
 
     const cfg = modelConfigs[index];
@@ -198,6 +206,10 @@ Promise.all(
       selectables: allModels, // 🔥 important
     });
   }
+  
+  console.log(`✅ Successfully loaded ${loaded.filter(m => m).length} out of ${modelConfigs.length} models`);
+}).catch((err) => {
+  console.error("Critical error loading models:", err);
 });
 // attach floor DOM label
 const floorLabel = new CSS2DObject(floorWallEl);
