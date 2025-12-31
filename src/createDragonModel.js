@@ -1,8 +1,16 @@
 // src/createDragonModel.js
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 
 const loader = new GLTFLoader();
+
+// Set up Draco decoder for compressed models
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath(
+  "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+);
+loader.setDRACOLoader(dracoLoader);
 
 // store all mixers for all loaded models
 const dragonMixers = [];
@@ -11,7 +19,7 @@ const dragonMixers = [];
  * Load a GLB, put it on the floor, optionally play an animation.
  */
 export function createDragonOnFloor({
-  url = "/models/mechbot_no_sorry_rig_rigged_bone_fbx.glb",
+  url = "/models/mechbot_optimized.glb",
   floorY,
   z = -8,
   x = 0,
@@ -77,7 +85,10 @@ export function createDragonOnFloor({
 
         resolve(dragon);
       },
-      undefined,
+      (progress) => {
+        const percent = (progress.loaded / progress.total) * 100;
+        console.log(`📦 Loading ${url}: ${percent.toFixed(1)}%`);
+      },
       (err) => {
         console.error("❌ Error loading model:", url, err);
         reject(err);

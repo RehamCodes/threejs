@@ -80,7 +80,7 @@ let modelsOnFloor = [];
 // after you have floorY from createTiledFloor
 const modelConfigs = [
   {
-    url: "/models/mechbot_no_sorry_rig_rigged_bone_fbx.glb",
+    url: "/models/mechbot_optimized.glb",
     x: 0,
     z: -WALL_DISTANCE * 0.6,
     scale: 0.06,
@@ -89,7 +89,7 @@ const modelConfigs = [
     pointSize: 0.007, // small robot → modest dots
   },
   {
-    url: "/models/green_ogre__3d_fantasy_monster.glb",
+    url: "/models/ogre_optimized.glb",
     x: 1,
     z: -WALL_DISTANCE * 0.7,
     scale: 1,
@@ -98,7 +98,7 @@ const modelConfigs = [
     pointSize: 0.005, // 🔥 much smaller
   },
   {
-    url: "/models/green_ogre__3d_fantasy_monster.glb",
+    url: "/models/ogre_optimized.glb",
     x: -2,
     z: -WALL_DISTANCE * 0.7,
     scale: 1,
@@ -107,7 +107,7 @@ const modelConfigs = [
     pointSize: 0.005, // same here
   },
   {
-    url: "/models/robotic_t-rex_roaring_animation.glb",
+    url: "/models/trex_optimized.glb",
     x: 4,
     z: -WALL_DISTANCE * 0.77,
     scale: 0.4,
