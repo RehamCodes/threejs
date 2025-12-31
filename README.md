@@ -4,8 +4,7 @@ A sophisticated 3D spaceship environment built with Three.js, featuring interact
 
 ## 🎥 Demo
 
-<!-- Place your video link or embed code here -->
-[Video Placeholder]
+https://github.com/user-attachments/assets/Screencast%20from%202025-12-31%2013-09-39.webm
 
 ## 🚀 Getting Started
 
