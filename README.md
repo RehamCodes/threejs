@@ -10,38 +10,26 @@ Screencast from 2025-12-31 13-09-39.webm
 
 ### Prerequisites
 
-- Node.js (v18+)
-- npm
+- Docker
+- Docker Compose
 
-### Installation
+### Running the Application
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running Development Server
+**Development (with hot reload):**
 
 ```bash
-npm run dev
+docker compose up dev
 ```
 
-Visit `http://localhost:5173` (or the port shown in terminal).
+Visit `http://localhost:3000`. Code changes will update automatically.
 
-### Docker Build
-
-To build and run using Docker:
+**Production:**
 
 ```bash
-# Build the image
-docker build -t threejs-spaceship .
-
-# Run the container
-docker run -p 8080:80 threejs-spaceship
+docker compose up prod
 ```
 
-Visit `http://localhost:8080`.
+Visit `http://localhost:80`.
 
 ## 📂 Project Structure
 

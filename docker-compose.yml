@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  dev:
+    build:
+      context: .
+      target: builder
+    container_name: threejs-dev
+    ports:
+      - "3000:5173"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./package.json:/app/package.json
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true
+
+  prod:
+    build:
+      context: .
+    container_name: threejs-prod
+    ports:
+      - "80:80"
+    restart: unless-stopped
