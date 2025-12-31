@@ -19,6 +19,7 @@ export function createDragonOnFloor({
   yOffset = 0,
   clipName, // e.g. "Walk" if you know it, otherwise it'll use first clip
 } = {}) {
+  console.log("🔄 Starting to load model:", url);
   return new Promise((resolve, reject) => {
     loader.load(
       url,
@@ -77,7 +78,14 @@ export function createDragonOnFloor({
 
         resolve(dragon);
       },
-      undefined,
+      (progress) => {
+        if (progress.lengthComputable) {
+          const percentComplete = (progress.loaded / progress.total) * 100;
+          console.log(`⏳ Loading ${url}: ${percentComplete.toFixed(1)}%`);
+        } else {
+          console.log(`⏳ Loading ${url}: ${(progress.loaded / 1024 / 1024).toFixed(2)} MB loaded`);
+        }
+      },
       (err) => {
         console.error("❌ Error loading model:", url, err);
         reject(err);
